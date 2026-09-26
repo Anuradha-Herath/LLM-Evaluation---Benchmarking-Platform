@@ -37,6 +37,17 @@ def create_app() -> FastAPI:
         include_in_schema=True,
     )
 
+    # Include root /dashboard UI route
+    from app.api.v1.dashboard import get_dashboard_ui
+    app.add_api_route(
+        "/dashboard",
+        endpoint=get_dashboard_ui,
+        methods=["GET"],
+        status_code=status.HTTP_200_OK,
+        tags=["Dashboard UI"],
+        include_in_schema=True,
+    )
+
     # Include API Routers
     app.include_router(router_v1, prefix="/api")
 

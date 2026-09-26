@@ -31,6 +31,7 @@ class EvaluationEngine:
         concurrency: int = 5,
         run_id: Optional[str] = None,
         provider_kwargs: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None,
     ):
         self.dataset_path = Path(dataset_path)
         self.provider_name = provider_name
@@ -40,6 +41,7 @@ class EvaluationEngine:
         self.concurrency = max(1, concurrency)
         self.run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         self.provider_kwargs = provider_kwargs or {}
+        self.limit = limit
 
     async def execute(self) -> EvaluationRunSummary:
         """
@@ -57,13 +59,28 @@ class EvaluationEngine:
         else:
             dataset = DatasetLoader.load_from_json(self.dataset_path)
 
+        records_to_run = dataset.records[:self.limit] if self.limit else dataset.records
+
         # 2. Instantiate LLM provider
         provider = ProviderFactory.get_provider(
             self.provider_name, **self.provider_kwargs
         )
 
         started_at = datetime.now(timezone.utc)
-        total_cases = len(dataset.records)
+        total_cases = len(records_to_run)
+
+        from app.observability.factory import ObservabilityFactory
+        obs = ObservabilityFactory.get_observability()
+        obs.start_trace(
+            run_id=self.run_id,
+            name=f"evaluation_run:{self.model}",
+            metadata={
+                "dataset_version": dataset.metadata.version,
+                "provider": self.provider_name,
+                "model": self.model,
+                "concurrency": self.concurrency,
+            },
+        )
 
         # 3. Create initial EvaluationRun object
         run_metadata = EvaluationRun(
@@ -92,7 +109,7 @@ class EvaluationEngine:
                     config=self.config,
                 )
 
-        tasks = [worker(record) for record in dataset.records]
+        tasks = [worker(record) for record in records_to_run]
         results = await asyncio.gather(*tasks)
 
         completed_at = datetime.now(timezone.utc)
@@ -116,6 +133,9 @@ class EvaluationEngine:
         logger.info(
             f"Completed run '{self.run_id}': {passed_cases}/{total_cases} passed ({failed_cases} failed) in {(completed_at - started_at).total_seconds():.2f}s"
         )
+
+        obs.end_trace(run_id=self.run_id, status=run_metadata.status)
+        obs.flush()
 
         return EvaluationRunSummary(
             run=run_metadata,

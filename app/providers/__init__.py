@@ -1,4 +1,5 @@
 from app.providers.base import BaseLLMProvider
+from app.providers.deterministic_provider import DeterministicTestProvider
 from app.providers.factory import ProviderFactory
 from app.providers.mock_provider import MockProvider
 from app.providers.ollama_provider import OllamaProvider
@@ -9,5 +10,7 @@ __all__ = [
     "OpenAIProvider",
     "OllamaProvider",
     "MockProvider",
+    "DeterministicTestProvider",
     "ProviderFactory",
 ]
+

@@ -1,6 +1,7 @@
 from typing import Any, Dict, Type
 
 from app.providers.base import BaseLLMProvider
+from app.providers.deterministic_provider import DeterministicTestProvider
 from app.providers.mock_provider import MockProvider
 from app.providers.ollama_provider import OllamaProvider
 from app.providers.openai_provider import OpenAIProvider
@@ -15,6 +16,7 @@ class ProviderFactory:
         "openai": OpenAIProvider,
         "ollama": OllamaProvider,
         "mock": MockProvider,
+        "deterministic": DeterministicTestProvider,
     }
 
     @classmethod

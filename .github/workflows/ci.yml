@@ -1,0 +1,83 @@
+name: CI - Deterministic Evaluation & Quality Suite
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  lint-and-test:
+    name: Lint, Test & Deterministic Regression Checks
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+      APP_ENV: "testing"
+      LANGFUSE_ENABLED: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-asyncio
+
+      - name: Run Code Linter (Ruff)
+        run: |
+          ruff check .
+
+      - name: Run Full Test Suite (Unit, API, DB & Metrics)
+        run: |
+          pytest -v --tb=short
+
+      - name: Run Deterministic LLM Evaluation Baseline
+        run: |
+          python -m app evaluate \
+            --dataset datasets/benchmark_v1.json \
+            --provider deterministic \
+            --model perfect \
+            --limit 10 \
+            --output reports/ci_baseline_eval.json
+
+      - name: Run Deterministic Regression Check (Expect PASS)
+        run: |
+          python -m app regression \
+            --baseline-provider deterministic \
+            --baseline-model perfect \
+            --candidate-provider deterministic \
+            --candidate-model perfect \
+            --dataset datasets/benchmark_v1.json \
+            --limit 10 \
+            --threshold-accuracy 0.8 \
+            --threshold-failure-rate 0.05
+
+      - name: Verify Regression Gate Rejects Degraded Model (Expect FAIL caught)
+        run: |
+          echo "Verifying CI gate fails when quality threshold is breached..."
+          if python -m app regression \
+            --baseline-provider deterministic \
+            --baseline-model perfect \
+            --candidate-provider deterministic \
+            --candidate-model degraded \
+            --dataset datasets/benchmark_v1.json \
+            --limit 10 \
+            --threshold-accuracy 0.85; then
+            echo "ERROR: Regression check should have failed for degraded model!"
+            exit 1
+          else
+            echo "SUCCESS: Regression gate correctly caught regression with non-zero exit code."
+          fi
+
+      - name: Build Application Package Check
+        run: |
+          python -m compileall app/

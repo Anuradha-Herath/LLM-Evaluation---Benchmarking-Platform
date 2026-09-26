@@ -64,7 +64,7 @@ class CaseRunner:
                 )
                 response = await provider.generate(request)
 
-                return EvaluationResult(
+                res_obj = EvaluationResult(
                     run_id=run_id,
                     test_case_id=record.id,
                     response=response.text,
@@ -74,6 +74,23 @@ class CaseRunner:
                     total_tokens=response.total_tokens,
                     error=response.error,
                 )
+
+                # Log Observability telemetry span
+                from app.observability.factory import ObservabilityFactory
+                ObservabilityFactory.get_observability().log_generation(
+                    run_id=run_id,
+                    case_id=record.id,
+                    model=model,
+                    user_prompt=record.input,
+                    system_prompt=system_prompt,
+                    response_text=response.text,
+                    latency_ms=response.latency_ms,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    error=response.error,
+                )
+
+                return res_obj
 
             except (LLMProviderTimeoutError, LLMProviderRateLimitError) as exc:
                 last_error_msg = f"{exc.__class__.__name__}: {exc.message}"
@@ -104,8 +121,7 @@ class CaseRunner:
                 )
                 break
 
-        # Fault isolation fallback: return failed EvaluationResult instead of raising exception
-        return EvaluationResult(
+        error_res = EvaluationResult(
             run_id=run_id,
             test_case_id=record.id,
             response=None,
@@ -115,3 +131,19 @@ class CaseRunner:
             total_tokens=None,
             error=last_error_msg or "Unknown evaluation error",
         )
+
+        from app.observability.factory import ObservabilityFactory
+        ObservabilityFactory.get_observability().log_generation(
+            run_id=run_id,
+            case_id=record.id,
+            model=model,
+            user_prompt=record.input,
+            system_prompt=system_prompt,
+            response_text=None,
+            latency_ms=0.0,
+            input_tokens=None,
+            output_tokens=None,
+            error=error_res.error,
+        )
+
+        return error_res

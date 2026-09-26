@@ -1,0 +1,8 @@
+{
+  "min_pass_rate_pct": 70.0,
+  "max_failure_rate_pct": 10.0,
+  "max_avg_latency_ms": 1000.0,
+  "max_allowed_pass_rate_drop_pct": 5.0,
+  "max_latency_increase_pct": 30.0,
+  "min_avg_metric_score": 0.50
+}

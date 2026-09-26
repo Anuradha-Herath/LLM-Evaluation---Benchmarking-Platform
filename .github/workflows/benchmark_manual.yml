@@ -1,0 +1,108 @@
+name: Manual LLM Benchmark Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'LLM Provider (openai, groq, gemini, ollama, mock, deterministic)'
+        required: true
+        default: 'openai'
+        type: choice
+        options:
+          - openai
+          - groq
+          - gemini
+          - ollama
+          - mock
+          - deterministic
+      model:
+        description: 'Model identifier (e.g. gpt-4o-mini, llama-3.3-70b-versatile, gemini-2.0-flash, perfect)'
+        required: true
+        default: 'gpt-4o-mini'
+      dataset_path:
+        description: 'Path to benchmark dataset'
+        required: true
+        default: 'datasets/benchmark_v1.json'
+      eval_limit:
+        description: 'Max test cases to run (empty for all)'
+        required: false
+        default: '10'
+      concurrency:
+        description: 'Concurrent requests (keep low to avoid rate limits)'
+        required: false
+        default: '2'
+
+jobs:
+  run-benchmark:
+    name: Run External LLM Benchmark
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "sqlite:///manual_benchmark.db"
+      APP_ENV: "production"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST || 'https://cloud.langfuse.com' }}
+      LANGFUSE_ENABLED: ${{ secrets.LANGFUSE_SECRET_KEY != '' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      - name: Execute Benchmark Evaluation
+        run: |
+          echo "Starting evaluation run..."
+          echo "Target Provider: ${{ inputs.provider }}"
+          echo "Target Model: ${{ inputs.model }}"
+          echo "Dataset: ${{ inputs.dataset_path }}"
+          
+          LIMIT_FLAG=""
+          if [ -n "${{ inputs.eval_limit }}" ]; then
+            LIMIT_FLAG="--limit ${{ inputs.eval_limit }}"
+          fi
+
+          python -m app evaluate \
+            --dataset "${{ inputs.dataset_path }}" \
+            --provider "${{ inputs.provider }}" \
+            --model "${{ inputs.model }}" \
+            $LIMIT_FLAG \
+            --output reports/manual_benchmark_results.json
+
+      - name: Generate Benchmark Summary Table
+        if: always()
+        run: |
+          if [ -f reports/manual_benchmark_results.json ]; then
+            echo "### Benchmark Run Summary" >> $GITHUB_STEP_SUMMARY
+            echo "Executed benchmark on ${{ inputs.provider }} / ${{ inputs.model }}" >> $GITHUB_STEP_SUMMARY
+            python -c "
+import json
+with open('reports/manual_benchmark_results.json') as f:
+    data = json.load(f)
+print(f'Total cases evaluated: {len(data.get(\"results\", []))}')
+" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Evaluation Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ inputs.provider }}-${{ inputs.model }}
+          path: reports/
+          retention-days: 14
