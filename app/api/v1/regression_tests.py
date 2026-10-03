@@ -48,8 +48,10 @@ async def run_regression_test(req: RegressionTestApiRequest) -> RegressionReport
         dataset_path=dataset_path,
         models=[base_spec, cand_spec],
         prompts=[prompt_spec],
-        concurrency=5,
+        concurrency=3,
+        limit=req.limit,
     )
+
 
     matrix_results = await BenchmarkService.run_benchmark_matrix(bench_config)
     base_summary, base_metric_map, _, _ = matrix_results[0]

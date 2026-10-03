@@ -38,7 +38,9 @@ async def create_evaluation(req: EvaluationCreateRequest) -> EvaluationRunSummar
         system_prompt=req.system_prompt,
         config=GenerationConfig(temperature=req.temperature),
         concurrency=req.concurrency,
+        limit=req.limit,
     )
+
 
     summary: EvaluationRunSummary = await engine.execute()
 
@@ -181,6 +183,8 @@ async def get_evaluation_results(
         items = [
             {
                 "case_id": r.case_id,
+                "test_case_id": r.case_id,
+                "response": r.response_text,
                 "response_text": r.response_text,
                 "latency_ms": r.latency_ms,
                 "input_tokens": r.input_tokens,
@@ -193,6 +197,7 @@ async def get_evaluation_results(
         ]
 
         return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
+
 
 
 @router.get(

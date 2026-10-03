@@ -29,9 +29,10 @@ class CaseRunner:
         model: str,
         system_prompt: Optional[str] = None,
         config: Optional[GenerationConfig] = None,
-        max_retries: int = 2,
-        initial_backoff_sec: float = 0.5,
+        max_retries: int = 3,
+        initial_backoff_sec: float = 1.0,
     ) -> EvaluationResult:
+
         """
         Executes a single test case record with retries and fault isolation.
 

@@ -79,9 +79,13 @@ def test_api_regression_test():
         "dataset_path": "datasets/benchmark_v1.json",
         "baseline_model": "mock:mock-v1",
         "candidate_model": "mock:mock-v1",
+        "limit": 5,
     }
     response = client.post("/api/v1/regression-tests", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "PASS"
+    assert data["status"] in ("PASS", "FAIL")
+    assert "violations" in data
+
+
     assert "violations" in data

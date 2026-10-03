@@ -41,12 +41,21 @@ class RegressionService:
 
         # 1. Compute summary statistics for baseline & candidate
         base_total = base_run.total_cases
-        base_passed = base_run.passed_cases
-        base_pass_rate = round((base_passed / base_total) * 100.0, 2) if base_total > 0 else 0.0
-
         cand_total = cand_run.total_cases
-        cand_passed = cand_run.passed_cases
-        cand_failed = cand_run.failed_cases
+
+        if candidate_metric_map and len(candidate_metric_map) > 0:
+            cand_passed = sum(1 for cid, mlist in candidate_metric_map.items() if mlist and all(m.passed for m in mlist))
+            cand_failed = cand_total - cand_passed
+        else:
+            cand_passed = cand_run.passed_cases
+            cand_failed = cand_run.failed_cases
+
+        if baseline_metric_map and len(baseline_metric_map) > 0:
+            base_passed = sum(1 for cid, mlist in baseline_metric_map.items() if mlist and all(m.passed for m in mlist))
+        else:
+            base_passed = base_run.passed_cases
+
+        base_pass_rate = round((base_passed / base_total) * 100.0, 2) if base_total > 0 else 0.0
         cand_pass_rate = round((cand_passed / cand_total) * 100.0, 2) if cand_total > 0 else 0.0
         cand_fail_rate = round((cand_failed / cand_total) * 100.0, 2) if cand_total > 0 else 0.0
 
@@ -61,13 +70,21 @@ class RegressionService:
         cand_results_map = {r.test_case_id: r for r in candidate_summary.results}
 
         affected_cases = []
-        for case_id, base_res in base_results_map.items():
+        for case_id in base_results_map.keys():
             cand_res = cand_results_map.get(case_id)
-            base_ok = base_res.error is None
-            cand_ok = cand_res and cand_res.error is None
+            if candidate_metric_map:
+                cand_m = candidate_metric_map.get(case_id, [])
+                base_m = (baseline_metric_map or {}).get(case_id, [])
+                base_ok = base_m and all(m.passed for m in base_m)
+                cand_ok = cand_m and all(m.passed for m in cand_m)
+            else:
+                base_res = base_results_map[case_id]
+                base_ok = base_res.error is None
+                cand_ok = cand_res and cand_res.error is None
 
             if base_ok and not cand_ok:
                 affected_cases.append(case_id)
+
 
         # 3. Assert Threshold Rules
 
