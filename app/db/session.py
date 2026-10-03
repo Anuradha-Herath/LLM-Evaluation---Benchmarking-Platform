@@ -22,15 +22,22 @@ try:
         pool_pre_ping=True,
     )
 except Exception:
-    async_engine = create_async_engine("sqlite+aiosqlite:///./llm_eval.db", echo=False)
+    try:
+        async_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    except Exception:
+        async_engine = None
 
-AsyncSessionLocal = async_sessionmaker(
-    bind=async_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+if async_engine is not None:
+    AsyncSessionLocal = async_sessionmaker(
+        bind=async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+else:
+    AsyncSessionLocal = None
+
 
 try:
     import psycopg2

@@ -204,12 +204,17 @@ async def main_async() -> None:
         if not model:
             if args.provider == "openai":
                 model = "gpt-4o-mini"
+            elif args.provider == "groq":
+                model = "llama-3.3-70b-versatile"
+            elif args.provider == "gemini":
+                model = "gemini-3.8-flash"
             elif args.provider == "ollama":
                 model = "llama3"
             elif args.provider == "deterministic":
                 model = "perfect"
             else:
                 model = "mock-model-v1"
+
 
         dataset_path = Path(args.dataset)
 
