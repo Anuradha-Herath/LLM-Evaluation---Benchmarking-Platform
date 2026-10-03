@@ -45,6 +45,7 @@ reports/*.html
 experiments/results/
 *.db
 *.sqlite3
+*.log
 
 
 # OS generated

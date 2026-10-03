@@ -55,14 +55,17 @@ class OpenAIProvider(BaseLLMProvider):
             "messages": messages,
             "temperature": request.config.temperature,
             "top_p": request.config.top_p,
-            "frequency_penalty": request.config.frequency_penalty,
-            "presence_penalty": request.config.presence_penalty,
         }
 
+        if request.config.frequency_penalty:
+            payload["frequency_penalty"] = request.config.frequency_penalty
+        if request.config.presence_penalty:
+            payload["presence_penalty"] = request.config.presence_penalty
         if request.config.max_tokens:
             payload["max_tokens"] = request.config.max_tokens
         if request.config.stop:
             payload["stop"] = request.config.stop
+
 
         # Merge provider-specific extra parameters
         payload.update(request.config.extra_params)
@@ -101,10 +104,10 @@ class OpenAIProvider(BaseLLMProvider):
 
         latency_ms = self._calc_latency_ms(start_time)
 
-        if response.status_code == 429:
-            logger.warning("OpenAI rate limit exceeded (429).")
+        if response.status_code in (429, 503):
+            logger.warning(f"Provider throttled/unavailable ({response.status_code}).")
             raise LLMProviderRateLimitError(
-                "OpenAI API rate limit exceeded.",
+                f"Provider returned status {response.status_code}: {response.text}",
                 provider_name=self.provider_name,
                 model_name=request.model,
             )

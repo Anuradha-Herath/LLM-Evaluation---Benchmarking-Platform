@@ -33,7 +33,9 @@ class EvaluationCreateRequest(BaseModel):
     )
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature.")
     concurrency: int = Field(default=5, ge=1, le=20, description="Max concurrent request workers.")
+    limit: Optional[int] = Field(default=None, ge=1, le=100, description="Optional maximum test cases limit.")
     persist_db: bool = Field(default=True, description="Whether to persist run into PostgreSQL database.")
+
 
 
 class BenchmarkCreateRequest(BaseModel):
@@ -74,6 +76,10 @@ class RegressionTestApiRequest(BaseModel):
     candidate_model: str = Field(
         default="mock:mock-model-v1", description="Candidate provider:model string."
     )
+    limit: Optional[int] = Field(
+        default=None, ge=1, le=100, description="Optional maximum number of test cases."
+    )
     config: Optional[Dict[str, Any]] = Field(
         default=None, description="Optional regression threshold parameters overrides."
     )
+

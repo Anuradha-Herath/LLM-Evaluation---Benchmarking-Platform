@@ -2,9 +2,12 @@ from typing import Any, Dict, Type
 
 from app.providers.base import BaseLLMProvider
 from app.providers.deterministic_provider import DeterministicTestProvider
+from app.providers.gemini_provider import GeminiProvider
+from app.providers.groq_provider import GroqProvider
 from app.providers.mock_provider import MockProvider
 from app.providers.ollama_provider import OllamaProvider
 from app.providers.openai_provider import OpenAIProvider
+
 
 
 class ProviderFactory:
@@ -14,6 +17,8 @@ class ProviderFactory:
 
     _registry: Dict[str, Type[BaseLLMProvider]] = {
         "openai": OpenAIProvider,
+        "groq": GroqProvider,
+        "gemini": GeminiProvider,
         "ollama": OllamaProvider,
         "mock": MockProvider,
         "deterministic": DeterministicTestProvider,

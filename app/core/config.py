@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    GROQ_API_KEY: str = ""
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GEMINI_API_KEY: str = ""
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
 
     # Observability Configuration
     LANGFUSE_PUBLIC_KEY: str = ""
@@ -40,3 +44,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
